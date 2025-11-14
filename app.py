@@ -1,5 +1,5 @@
 import streamlit as st
-import os # Keep os for client creation, though we don't use getenv
+import os
 import time
 from pathlib import Path
 from PyPDF2 import PdfReader
@@ -7,15 +7,14 @@ import re
 import random
 
 import chromadb
-# Import specific components needed for explicit client configuration
-from chromadb.config import Settings, System, DEFAULT_TENANT, DEFAULT_DATABASE
+# REMOVED: from chromadb.config import Settings, System, DEFAULT_TENANT, DEFAULT_DATABASE
+# The Settings import is no longer needed
 
 from google import genai
 from google.api_core.exceptions import ResourceExhausted
 from google.genai.types import EmbedContentConfig
 
 # ---------------- Load Streamlit Secret ----------------
-# The API key is now loaded from Streamlit's st.secrets
 if "GEMINI_API_KEY" not in st.secrets:
     st.error("GEMINI_API_KEY not found in st.secrets. Please configure your secrets.toml file or deployment secrets.")
     st.stop()
@@ -68,12 +67,7 @@ if "user_name" not in st.session_state:
 if "course_name" not in st.session_state:
     st.session_state.course_name = "Your Course"
 
-# Define the explicit ChromaDB settings object
-CHROMA_SETTINGS = Settings(
-    chroma_client_impl="chromadb.db.impl.duckdb.persistent.PersistentDuckDB",
-    chroma_api_impl="chromadb.api.local.LocalAPI",
-    is_persistent=True
-)
+# REMOVED: CHROMA_SETTINGS definition block
 
 with st.sidebar:
     st.header("Personalize Your Agent")
@@ -84,8 +78,8 @@ with st.sidebar:
     # Reset Database Button
     if st.button("Reset Database (Delete All Collections)"):
         try:
-            # Use the explicit settings here too
-            chroma_client = chromadb.PersistentClient(path="./chroma_db", settings=CHROMA_SETTINGS)
+            # UPDATED: Use PersistentClient directly
+            chroma_client = chromadb.PersistentClient(path="./chroma_db")
             for collection_name in chroma_client.list_collections():
                 chroma_client.delete_collection(collection_name.name)
             st.session_state.vector_dbs = {}
@@ -101,9 +95,9 @@ if "chat_history" not in st.session_state:
 
 # Load existing collections from persistent ChromaDB on app start
 try:
-    # --- FIX APPLIED HERE: Using explicit settings object ---
-    chroma_client = chromadb.PersistentClient(path="./chroma_db", settings=CHROMA_SETTINGS)
-    # --------------------------------------------------------
+    # UPDATED: Use PersistentClient directly
+    chroma_client = chromadb.PersistentClient(path="./chroma_db")
+    
     for collection in chroma_client.list_collections():
         st.session_state.vector_dbs[collection.name] = collection
 except Exception as e:
@@ -184,8 +178,8 @@ def get_pdf_context(question, top_k=3):
     # Delete corrupted collections
     for collection_name in corrupted_collections:
         try:
-            # Need to re-initialize client for deletion, using the explicit settings
-            delete_client = chromadb.PersistentClient(path="./chroma_db", settings=CHROMA_SETTINGS)
+            # UPDATED: Use PersistentClient directly
+            delete_client = chromadb.PersistentClient(path="./chroma_db")
             delete_client.delete_collection(collection_name)
             del st.session_state.vector_dbs[collection_name]
         except Exception as e:
